@@ -4,7 +4,7 @@ Lightweight Flask microservice that tells you the cheapest upcoming time window 
 
 ## Features
 - Configurable window length via query parameter (`?minutes=180` by default).
-- Localized responses: Finnish (`fi`, default), English (`en`), Swedish (`sv`).
+- Localized responses: Finnish (`fi`, default), English (`en`), Swedish (`sv`), Danish (`da`).
 - Optional Bearer authentication token.
 - Optional Redis cache for API responses.
 - Docker image with gunicorn entrypoint; also runnable directly with `python`/`gunicorn`.

@@ -112,6 +112,17 @@ STRINGS = {
         "today": "today",
         "tomorrow": "tomorrow",
     },
+    "da": {
+        "past_avg": "Gennemsnitsprisen det seneste døgn er {avg} cent.",
+        "cheap_current": "Det næste {minutes}-minutters vindue er billigt, kun {avg} cent.",
+        "best_12h": "Inden for de næste 12 timer er laveste pris {avg} cent fra {time}.",
+        "best_all": "Set længere frem er laveste pris {avg} cent fra {time}.",
+        "expensive": "Strømmen er ret dyr lige nu; måske vent med perioden.",
+        "best_now": "Det billigste vindue er praktisk talt nu – start {minutes}-minutters vinduet med det samme.",
+        "best_later": "Det billigste {minutes}-minutters vindue starter {time}.",
+        "today": "i dag",
+        "tomorrow": "i morgen",
+    },
     "sv": {
         "past_avg": "Medelpriset det senaste dygnet är {avg} cent.",
         "cheap_current": "Nästa {minutes}-minutersperiod är billig, bara {avg} cent.",
@@ -151,6 +162,7 @@ def floor_to_q15(ts: int) -> int:
 MONTH_NAMES = {
     "fi": ["tammikuuta", "helmikuuta", "maaliskuuta", "huhtikuuta", "toukokuuta", "kesäkuuta", "heinäkuuta", "elokuuta", "syyskuuta", "lokakuuta", "marraskuuta", "joulukuuta"],
     "en": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    "da": ["januar", "februar", "marts", "april", "maj", "juni", "juli", "august", "september", "oktober", "november", "december"],
     "sv": ["januari", "februari", "mars", "april", "maj", "juni", "juli", "augusti", "september", "oktober", "november", "december"],
 }
 
@@ -163,13 +175,13 @@ def human_time(ts_epoch: int, lang: str) -> str:
     if dt_local.date() == today:
         if lang == "en":
             return f"{STRINGS[lang]['today']} at {time_part}"
-        if lang == "sv":
+        if lang in ("sv", "da"):
             return f"{STRINGS[lang]['today']} kl {time_part}"
         return f"{STRINGS[lang]['today']} kello {time_part}"
     if dt_local.date() == today + timedelta(days=1):
         if lang == "en":
             return f"{STRINGS[lang]['tomorrow']} at {time_part}"
-        if lang == "sv":
+        if lang in ("sv", "da"):
             return f"{STRINGS[lang]['tomorrow']} kl {time_part}"
         return f"{STRINGS[lang]['tomorrow']} kello {time_part}"
 
@@ -177,6 +189,8 @@ def human_time(ts_epoch: int, lang: str) -> str:
     if lang == "fi":
         return f"{dt_local.day}. {month} kello {time_part}"
     if lang == "sv":
+        return f"{dt_local.day}. {month} kl {time_part}"
+    if lang == "da":
         return f"{dt_local.day}. {month} kl {time_part}"
     return f"{month} {dt_local.day} at {time_part}"
 
