@@ -18,7 +18,7 @@ docker pull ghcr.io/OWNER/spotpriceadvisor:latest
 # Run on host port 5002, keep auth token, Redis cache disabled by default
 docker run -d --rm \
   -p 5002:5000 \
-  -e SPOTPRICE_TOKEN="mysecret" \
+  -e SPOTPRICE_TOKEN="mysecret" \  # REQUIRED: change from default sentinel
   --name spotpriceadvisor \
   ghcr.io/OWNER/spotpriceadvisor:latest
 
@@ -47,7 +47,7 @@ The service reads an optional TOML config (defaults to `/etc/spotpriceadvisor/co
 ```toml
 # config.example.toml
 [server]
-token = "mysecret"  # empty => no auth
+token = "CHANGEME_SPOTPRICE_TOKEN"  # REQUIRED: change to your own value (or set to "" to disable auth)
 port = 5000
 
 [api]
@@ -73,7 +73,7 @@ docker run -d --rm -p 5002:5000 \
 python -m venv .venv
 . .venv/bin/activate
 pip install -r requirements.txt
-export SPOTPRICE_TOKEN="mysecret"
+export SPOTPRICE_TOKEN="mysecret"  # REQUIRED
 export FLASK_APP=spotpriceadvisor_api.py
 gunicorn -b 0.0.0.0:5000 spotpriceadvisor_api:app
 ```
@@ -142,7 +142,7 @@ docker run -d --rm -p 5002:5000 ghcr.io/OWNER/spotpriceadvisor:latest
 For releases, publish tagged images (e.g., `:v1.0.0`) to your container registry.
 
 ## Environment variables summary
-- `SPOTPRICE_TOKEN` – Bearer token (empty to disable auth).
+- `SPOTPRICE_TOKEN` – Bearer token (REQUIRED: service refuses to start if left at default sentinel; empty disables auth if set explicitly).
 - `SPOTPRICE_PORT` – Internal listen port (default 5000).
 - `SPOTPRICE_API_URL` – Override API endpoint.
 - `SPOTPRICE_USER_AGENT` – UA for upstream API.

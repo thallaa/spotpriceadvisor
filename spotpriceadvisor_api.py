@@ -29,10 +29,12 @@ try:
 except Exception:
     pass
 
+DEFAULT_TOKEN_SENTINEL = "CHANGEME_SPOTPRICE_TOKEN"
+
 # Defaults can be overridden by /etc/spotpriceadvisor/config.toml or env
 DEFAULT_CONFIG = {
     "server": {
-        "token": os.environ.get("SPOTPRICE_TOKEN", "spotpriceadvisorpwd"),  # empty -> no auth
+        "token": os.environ.get("SPOTPRICE_TOKEN", DEFAULT_TOKEN_SENTINEL),  # empty -> no auth
         "port": int(os.environ.get("SPOTPRICE_PORT", "5000")),
     },
     "api": {
@@ -79,6 +81,13 @@ TOKEN = CONFIG["server"].get("token") or ""
 API_URL = CONFIG["api"]["url"]
 API_TIMEOUT = CONFIG["api"]["timeout"]
 API_UA = CONFIG["api"]["user_agent"]
+
+# Force users to change the default token (or explicitly set empty)
+if TOKEN == DEFAULT_TOKEN_SENTINEL and not os.environ.get("SPOTPRICE_ALLOW_DEFAULT", ""):
+    raise RuntimeError(
+        "SPOTPRICE_TOKEN not configured. Set SPOTPRICE_TOKEN (or config server.token) to a non-default value, "
+        "or set it empty explicitly if you really want no auth."
+    )
 
 STRINGS = {
     "fi": {

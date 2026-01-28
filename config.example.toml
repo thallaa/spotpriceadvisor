@@ -1,5 +1,5 @@
 [server]
-token = "spotpriceadvisorpwd"
+token = "CHANGEME_SPOTPRICE_TOKEN" # required: change to your own value (or empty to disable auth)
 port = 5000
 
 [api]
