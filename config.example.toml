@@ -1,0 +1,13 @@
+[server]
+token = "spotpriceadvisorpwd"
+port = 5000
+
+[api]
+url = "https://api.porssisahko.net/v2/latest-prices.json"
+timeout = 10
+user_agent = "spotpriceadvisor/1.0"
+
+[cache]
+enabled = false
+redis_url = "redis://redis:6379/0"
+ttl_seconds = 60
