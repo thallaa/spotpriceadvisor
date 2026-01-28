@@ -85,6 +85,24 @@ gunicorn -b 0.0.0.0:5000 spotpriceadvisor_api:app
   - `minutes` (int, default 180, min 15, rounded up to 15-minute slots)
   - `lang` (`fi`|`en`|`sv`, default `fi`)
 
+## iPhone / Apple Watch Shortcut example
+
+You can make Siri answer “Is electricity expensive?” by calling this API and speaking the response.
+
+Steps (on iPhone):
+1. Open Shortcuts → “+” → Add Action → **Get Contents of URL**.
+   - URL: `https://your-domain.example.com/` (or your local network URL)
+   - Method: GET
+   - Headers: `Authorization : Bearer YOUR_TOKEN`
+   - Add Query Items if needed: `minutes=180`, `lang=en` (or `fi/sv/da`)
+2. Add Action → **Get Contents of URL** result → **Get Dictionary Value** (Key: `body`) if Shortcuts doesn’t auto treat it as text. Often the response is plain text already; if so, skip this.
+3. Add Action → **Speak Text** (set language/voice to match `lang` you use).
+4. Name the Shortcut, e.g., “Electricity price”.
+5. To use on Apple Watch: enable “Show on Apple Watch” in Shortcut settings.
+6. Trigger with Siri: “Hey Siri, electricity price” or “Is electricity expensive?”; Siri will call the endpoint and read the recommendation aloud.
+
+Tip: If you want the default 180-minute window, just omit the `minutes` query item. To check a shorter task (e.g., oven 60 minutes), add `minutes=60` to the URL.
+
 ## Reverse proxy + HTTPS (LetsEncrypt)
 
 ### Nginx snippet
