@@ -103,6 +103,15 @@ Steps (on iPhone):
 
 Tip: If you want the default 180-minute window, just omit the `minutes` query item. To check a shorter task (e.g., oven 60 minutes), add `minutes=60` to the URL.
 
+## Android / Wear OS (second-hand notes)
+
+I don’t run Android daily, but users report success with Tasker + AutoVoice/AutoWear:
+- Install Tasker and AutoVoice on the phone (AutoWear for Wear OS).
+- Tasker Task: (1) HTTP Request GET `https://your.domain/?minutes=180&lang=en` with header `Authorization: Bearer YOUR_TOKEN`; (2) Say/TTs `%HTTPD` (response body), language matching `lang`.
+- Profile: Event → Plugin → AutoVoice Recognized, Command: e.g., “is electricity expensive”, linked to the Task.
+- Wear OS: use AutoWear Tile or AutoVoice Assistant interception so “Hey Google, ask AutoVoice is electricity expensive” triggers the Task and speaks the reply.
+Note: Google Assistant routines can’t natively speak dynamic HTTP responses; they can only speak static text or open a URL.
+
 ## Reverse proxy + HTTPS (LetsEncrypt)
 
 ### Nginx snippet
