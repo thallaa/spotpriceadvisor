@@ -152,9 +152,17 @@ def human_time(ts_epoch: int, lang: str) -> str:
     today = datetime.now().astimezone().date()
     time_part = dt_local.strftime("%H:%M")
     if dt_local.date() == today:
-        return f"{STRINGS[lang]['today']} kello {time_part}" if lang != "en" else f"{STRINGS[lang]['today']} at {time_part}"
+        if lang == "en":
+            return f"{STRINGS[lang]['today']} at {time_part}"
+        if lang == "sv":
+            return f"{STRINGS[lang]['today']} kl {time_part}"
+        return f"{STRINGS[lang]['today']} kello {time_part}"
     if dt_local.date() == today + timedelta(days=1):
-        return f"{STRINGS[lang]['tomorrow']} kello {time_part}" if lang != "en" else f"{STRINGS[lang]['tomorrow']} at {time_part}"
+        if lang == "en":
+            return f"{STRINGS[lang]['tomorrow']} at {time_part}"
+        if lang == "sv":
+            return f"{STRINGS[lang]['tomorrow']} kl {time_part}"
+        return f"{STRINGS[lang]['tomorrow']} kello {time_part}"
 
     month = MONTH_NAMES[lang][dt_local.month - 1]
     if lang == "fi":
