@@ -19,6 +19,7 @@ import json
 import urllib.request
 import copy
 import tomllib
+import math
 
 from flask import Flask, Response, abort, request
 
@@ -79,8 +80,41 @@ API_URL = CONFIG["api"]["url"]
 API_TIMEOUT = CONFIG["api"]["timeout"]
 API_UA = CONFIG["api"]["user_agent"]
 
-# 3 hours = 12 * 15 min
-WINDOW_Q = 12
+STRINGS = {
+    "fi": {
+        "past_avg": "Sähkön keskihinta viimeisen päivän ajalta on {avg} senttiä.",
+        "cheap_current": "Seuraava {minutes}-minuuttinen jakso on halpa, vain {avg} senttiä.",
+        "best_12h": "Seuraavan 12 tunnin sisällä halvimmillaan hinta on {avg} senttiä alkaen {time}.",
+        "best_all": "Laajemmalla tarkastelulla halvimmillaan hinta on {avg} senttiä alkaen {time}.",
+        "expensive": "Sähkö on melko kallista lähiaikoina, jaksoa ei ehkä kannata aloittaa vielä.",
+        "best_now": "Halvin hetki on käytännössä nyt – {minutes}-minuuttinen kannattaa aloittaa heti.",
+        "best_later": "Halvin {minutes}-minuuttinen alkaa {time}.",
+        "today": "tänään",
+        "tomorrow": "huomenna",
+    },
+    "en": {
+        "past_avg": "The average electricity price over the last day is {avg} cents.",
+        "cheap_current": "The next {minutes}-minute window is cheap, only {avg} cents.",
+        "best_12h": "Within the next 12 hours the lowest price is {avg} cents starting {time}.",
+        "best_all": "Looking further ahead, the lowest price is {avg} cents starting {time}.",
+        "expensive": "Power is fairly expensive soon; you might want to wait.",
+        "best_now": "The cheapest window is effectively now — start the {minutes}-minute window right away.",
+        "best_later": "The cheapest {minutes}-minute window starts {time}.",
+        "today": "today",
+        "tomorrow": "tomorrow",
+    },
+    "sv": {
+        "past_avg": "Medelpriset det senaste dygnet är {avg} cent.",
+        "cheap_current": "Nästa {minutes}-minutersperiod är billig, bara {avg} cent.",
+        "best_12h": "Inom de kommande 12 timmarna är lägsta priset {avg} cent med start {time}.",
+        "best_all": "Vid bredare tidsram är lägsta priset {avg} cent med start {time}.",
+        "expensive": "Elpriset är ganska högt just nu; vänta kanske med perioden.",
+        "best_now": "Billigaste perioden är i princip nu – starta {minutes}-minutersperioden direkt.",
+        "best_later": "Billigaste {minutes}-minutersperioden börjar {time}.",
+        "today": "idag",
+        "tomorrow": "imorgon",
+    },
+}
 
 app = Flask(__name__)
 
@@ -93,18 +127,41 @@ def round_snt(x: Decimal) -> Decimal:
     return x.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
 
 
+def format_price(x: Decimal, lang: str) -> str:
+    # Finnish and Swedish prefer decimal comma, English uses point
+    s = f"{round_snt(x):.1f}"
+    if lang in ("fi", "sv"):
+        s = s.replace(".", ",")
+    return s
+
+
 def floor_to_q15(ts: int) -> int:
     return ts - (ts % 900)
 
 
-def human_time(ts_epoch: int) -> str:
+MONTH_NAMES = {
+    "fi": ["tammikuuta", "helmikuuta", "maaliskuuta", "huhtikuuta", "toukokuuta", "kesäkuuta", "heinäkuuta", "elokuuta", "syyskuuta", "lokakuuta", "marraskuuta", "joulukuuta"],
+    "en": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    "sv": ["januari", "februari", "mars", "april", "maj", "juni", "juli", "augusti", "september", "oktober", "november", "december"],
+}
+
+
+def human_time(ts_epoch: int, lang: str) -> str:
+    lang = lang if lang in STRINGS else "fi"
     dt_local = datetime.fromtimestamp(ts_epoch, tz=timezone.utc).astimezone()
     today = datetime.now().astimezone().date()
+    time_part = dt_local.strftime("%H:%M")
     if dt_local.date() == today:
-        return f"tänään kello {dt_local.strftime('%H:%M')}"
+        return f"{STRINGS[lang]['today']} kello {time_part}" if lang != "en" else f"{STRINGS[lang]['today']} at {time_part}"
     if dt_local.date() == today + timedelta(days=1):
-        return f"huomenna kello {dt_local.strftime('%H:%M')}"
-    return f"{dt_local.day}. {dt_local.strftime('%B')}ta kello {dt_local.strftime('%H:%M')}"
+        return f"{STRINGS[lang]['tomorrow']} kello {time_part}" if lang != "en" else f"{STRINGS[lang]['tomorrow']} at {time_part}"
+
+    month = MONTH_NAMES[lang][dt_local.month - 1]
+    if lang == "fi":
+        return f"{dt_local.day}. {month} kello {time_part}"
+    if lang == "sv":
+        return f"{dt_local.day}. {month} kl {time_part}"
+    return f"{month} {dt_local.day} at {time_part}"
 
 
 def text_response(msg, status=200):
@@ -193,6 +250,17 @@ def advisor():
         if auth != f"Bearer {TOKEN}":
             abort(401)
 
+    # Language and window length
+    lang = request.args.get("lang", "fi").lower()
+    if lang not in STRINGS:
+        lang = "fi"
+    try:
+        duration_minutes = int(request.args.get("minutes", "180"))
+    except ValueError:
+        duration_minutes = 180
+    duration_minutes = max(15, duration_minutes)
+    window_q = math.ceil(duration_minutes / 15)
+
     now = datetime.now(timezone.utc)
     now_ts = int(now.timestamp())
     cur_q15_ts = floor_to_q15(now_ts)
@@ -218,46 +286,42 @@ def advisor():
 
     if not past:
         return text_response("Viimeisen vuorokauden hintatietoa ei ole saatavilla.", 503)
-    if len(future) < WINDOW_Q:
+    if len(future) < window_q:
         return text_response("Tulevia varttihintoja ei ole riittävästi.", 503)
 
     past_avg = sum(past) / Decimal(len(past))
 
-    current_prices = [p for _, p in future[:WINDOW_Q]]
-    current_avg = sum(current_prices) / Decimal(WINDOW_Q)
+    current_prices = [p for _, p in future[:window_q]]
+    current_avg = sum(current_prices) / Decimal(window_q)
 
     within_12h = future[:48] if len(future) >= 48 else future
-    best_12h = best_q15_window(within_12h, WINDOW_Q)
-    best_all = best_q15_window(future, WINDOW_Q)
+    best_12h = best_q15_window(within_12h, window_q)
+    best_all = best_q15_window(future, window_q)
 
     msg = []
-    msg.append(
-        "Sähkön keskihinta viimeisen päivän ajalta on "
-        f"{round_snt(past_avg):.1f}".replace(".", ",")
-        + " senttiä."
-    )
+    msg.append(STRINGS[lang]["past_avg"].format(avg=format_price(past_avg, lang)))
 
     if current_avg < past_avg * Decimal("0.90"):
         msg.append(
-            "Seuraava kolmen tunnin jakso on halpa, vain "
-            f"{round_snt(current_avg):.1f}".replace(".", ",")
-            + " senttiä."
+            STRINGS[lang]["cheap_current"].format(
+                minutes=duration_minutes, avg=format_price(current_avg, lang)
+            )
         )
 
     if best_12h and best_12h[1] < current_avg:
         start12, avg12 = best_12h
         msg.append(
-            "Seuraavan 12 tunnin sisällä halvimmillaan hinta on "
-            f"{round_snt(avg12):.1f}".replace(".", ",")
-            + f" senttiä alkaen {human_time(start12)}."
+            STRINGS[lang]["best_12h"].format(
+                avg=format_price(avg12, lang), time=human_time(start12, lang)
+            )
         )
 
     if best_all and (best_12h is None or best_all[1] < best_12h[1]):
         start_all, avg_all = best_all
         msg.append(
-            "Laajemmalla tarkastelulla halvimmillaan hinta on "
-            f"{round_snt(avg_all):.1f}".replace(".", ",")
-            + f" senttiä alkaen {human_time(start_all)}."
+            STRINGS[lang]["best_all"].format(
+                avg=format_price(avg_all, lang), time=human_time(start_all, lang)
+            )
         )
 
     candidates = [
@@ -269,14 +333,22 @@ def advisor():
         candidates.append((best_all[0], best_all[1], "future"))
 
     best_start, best_avg, best_label = min(candidates, key=lambda x: x[1])
-    best_human = human_time(best_start)
+    best_human = human_time(best_start, lang)
 
     if best_avg >= past_avg * Decimal("0.90"):
-        msg.append("Sähkö on melko kallista lähiaikoina, pesua ei ehkä kannata aloittaa vielä.")
+        msg.append(STRINGS[lang]["expensive"])
     elif best_label == "current":
-        msg.append("Paras hetki on käytännössä nyt – pesu kannattaa aloittaa heti.")
+        msg.append(
+            STRINGS[lang]["best_now"].format(
+                minutes=duration_minutes, time=best_human
+            )
+        )
     else:
-        msg.append(f"Paras hetki pesulle on {best_human}.")
+        msg.append(
+            STRINGS[lang]["best_later"].format(
+                minutes=duration_minutes, time=best_human
+            )
+        )
 
     return text_response(" ".join(msg))
 
