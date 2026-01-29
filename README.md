@@ -167,6 +167,10 @@ docker run -d --rm -p 5002:5000 ghcr.io/thallaa/spotpriceadvisor:latest
 ```
 For releases, publish tagged images (e.g., `:v1.0.0`) to your container registry.
 
+## Tests
+- Install dev deps: `pip install -r requirements-dev.txt`
+- Run: `pytest`
+
 ## Environment variables summary
 - `SPOTPRICE_TOKEN` – Bearer token (REQUIRED: service refuses to start if left at default sentinel; empty disables auth if set explicitly).
 - `SPOTPRICE_PORT` – Internal listen port (default 5000).
