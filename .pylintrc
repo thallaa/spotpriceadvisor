@@ -1,0 +1,8 @@
+[MASTER]
+ignore=__pycache__
+
+[MESSAGES CONTROL]
+disable=C0114,C0115,C0116,R1705,R0913
+
+[FORMAT]
+max-line-length=100
