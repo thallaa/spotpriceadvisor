@@ -171,6 +171,36 @@ For releases, publish tagged images (e.g., `:v1.0.0`) to your container registry
 - Install dev deps: `pip install -r requirements-dev.txt`
 - Run: `pytest`
 
+## Systemd service (non-Docker)
+
+Example unit to run gunicorn directly:
+```
+[Unit]
+Description=Spotprice Advisor
+After=network.target
+
+[Service]
+User=spotprice
+Group=spotprice
+WorkingDirectory=/opt/spotpriceadvisor
+Environment="SPOTPRICE_TOKEN=yourtoken"
+Environment="SPOTPRICE_CACHE=true"
+Environment="SPOTPRICE_CACHE_TTL=60"
+ExecStart=/usr/bin/gunicorn -b 0.0.0.0:5000 spotpriceadvisor_api:app
+Restart=on-failure
+TimeoutStartSec=30
+
+[Install]
+WantedBy=multi-user.target
+```
+Steps:
+1) Place code in `/opt/spotpriceadvisor` and install deps (venv recommended):  
+   `python -m venv /opt/spotpriceadvisor/.venv && . /opt/spotpriceadvisor/.venv/bin/activate && pip install -r requirements.txt`
+   Update `ExecStart` to point to venv gunicorn (e.g., `/opt/spotpriceadvisor/.venv/bin/gunicorn`).
+2) Save unit as `/etc/systemd/system/spotpriceadvisor.service`.
+3) `sudo systemctl daemon-reload && sudo systemctl enable --now spotpriceadvisor`.
+4) Put your config in `/etc/spotpriceadvisor/config.toml` if you prefer file-based settings.
+
 ## Environment variables summary
 - `SPOTPRICE_TOKEN` – Bearer token (REQUIRED: service refuses to start if left at default sentinel; empty disables auth if set explicitly).
 - `SPOTPRICE_PORT` – Internal listen port (default 5000).
