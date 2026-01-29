@@ -160,6 +160,42 @@ Enable TLS with certbot:
 sudo certbot --apache -d spot.example.com
 ```
 
+### Optional Caddy (drop-in for simple TLS)
+If you don’t want to manage Apache/Nginx, you can put Caddy in front of the container to auto-issue and renew certs.
+
+`docker-compose.yml` example:
+```yaml
+services:
+  app:
+    image: ghcr.io/thallaa/spotpriceadvisor:v1.0.3
+    environment:
+      SPOTPRICE_TOKEN: changeme
+    expose:
+      - "5000"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:
+```
+`Caddyfile`:
+```
+yourdomain.example.com {
+    reverse_proxy app:5000
+}
+```
+Caddy will obtain and renew Let’s Encrypt certs automatically.
+
 ## Building your own image
 ```bash
 docker build -t ghcr.io/thallaa/spotpriceadvisor:latest .
