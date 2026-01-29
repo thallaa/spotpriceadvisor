@@ -46,7 +46,6 @@ DEFAULT_CONFIG = {
     },
     "cache": {
         "enabled": os.environ.get("SPOTPRICE_CACHE", "false").lower() == "true",
-        "redis_url": os.environ.get("SPOTPRICE_REDIS_URL", "redis://redis:6379/0"),
         "ttl_seconds": int(os.environ.get("SPOTPRICE_CACHE_TTL", "60")),
     },
 }
@@ -199,21 +198,17 @@ def text_response(msg, status=200):
     return Response(msg, status=status, content_type="text/plain; charset=utf-8")
 
 
-def fetch_api_prices(redis_client=None, cache_ttl: int = 0):
-    """Return list of (start_ts_utc:int, gross_snt_per_kwh:Decimal). Uses Redis cache when provided."""
-    cache_key = "spotpriceadvisor:latest-prices"
+_in_mem_cache = {"prices": None, "ts": 0}
 
-    if redis_client is not None:
-        cached = redis_client.get(cache_key)
-        if cached:
-            try:
-                raw_prices = json.loads(cached)
-            except Exception:
-                raw_prices = None
-        else:
-            raw_prices = None
-    else:
-        raw_prices = None
+
+def fetch_api_prices(cache_ttl: int = 0):
+    """Return list of (start_ts_utc:int, gross_snt_per_kwh:Decimal). Uses in-process TTL cache when enabled."""
+    now = datetime.now(timezone.utc).timestamp()
+    raw_prices = None
+
+    if CONFIG["cache"]["enabled"] and cache_ttl > 0:
+        if _in_mem_cache["prices"] and (now - _in_mem_cache["ts"] <= cache_ttl):
+            raw_prices = _in_mem_cache["prices"]
 
     if raw_prices is None:
         req = urllib.request.Request(API_URL, headers={"User-Agent": API_UA})
@@ -227,11 +222,9 @@ def fetch_api_prices(redis_client=None, cache_ttl: int = 0):
         if not raw_prices:
             raise RuntimeError("API ei palauttanut hintatietoja.")
 
-        if redis_client is not None and cache_ttl > 0:
-            try:
-                redis_client.setex(cache_key, cache_ttl, json.dumps(raw_prices))
-            except Exception as exc:
-                print(f"Warning: Redis-tallennus epäonnistui: {exc}", file=sys.stderr)
+        if CONFIG["cache"]["enabled"] and cache_ttl > 0:
+            _in_mem_cache["prices"] = raw_prices
+            _in_mem_cache["ts"] = now
 
     out = []
     for item in raw_prices:
@@ -296,18 +289,8 @@ def advisor():
     now_ts = int(now.timestamp())
     cur_q15_ts = floor_to_q15(now_ts)
 
-    redis_client = None
-    if CONFIG["cache"]["enabled"]:
-        try:
-            import redis
-
-            redis_client = redis.from_url(CONFIG["cache"]["redis_url"])
-        except Exception as exc:
-            print(f"Warning: Redis-yhteys epäonnistui ({exc}), jatketaan ilman välimuistia.", file=sys.stderr)
-            redis_client = None
-
     try:
-        prices = fetch_api_prices(redis_client, CONFIG["cache"]["ttl_seconds"])
+        prices = fetch_api_prices(CONFIG["cache"]["ttl_seconds"])
     except Exception as exc:
         return text_response(str(exc), 502)
 

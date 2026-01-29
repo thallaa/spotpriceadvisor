@@ -6,7 +6,7 @@ Lightweight Flask microservice that tells you the cheapest upcoming time window 
 - Configurable window length via query parameter (`?minutes=180` by default).
 - Localized responses: Finnish (`fi`, default), English (`en`), Swedish (`sv`), Danish (`da`).
 - Optional Bearer authentication token.
-- Optional Redis cache for API responses.
+- Optional in-process cache for API responses (configurable TTL).
 - Docker image with gunicorn entrypoint; also runnable directly with `python`/`gunicorn`.
 
 ## Quickstart (Docker)
@@ -15,7 +15,7 @@ Lightweight Flask microservice that tells you the cheapest upcoming time window 
 # Pull the published image (replace OWNER/PROJECT with your namespace once released)
 docker pull ghcr.io/thallaa/spotpriceadvisor:latest
 
-# Run on host port 5002, keep auth token, Redis cache disabled by default
+# Run on host port 5002, keep auth token, cache disabled by default
 docker run -d --rm \
   -p 5002:5000 \
   -e SPOTPRICE_TOKEN="mysecret" \  # REQUIRED: change from default sentinel
@@ -29,15 +29,14 @@ curl -H "Authorization: Bearer mysecret" http://localhost:5002/
 curl -H "Authorization: Bearer mysecret" "http://localhost:5002/?minutes=60&lang=en"
 ```
 
-### With Redis cache
+### With in-process cache
+Enable a small in-memory cache (per process) to avoid hammering the upstream API:
 ```bash
-docker network create spotnet
-docker run -d --rm --network spotnet --name redis redis:7-alpine
-docker run -d --rm --network spotnet \
+docker run -d --rm \
   -p 5002:5000 \
   -e SPOTPRICE_TOKEN="mysecret" \
   -e SPOTPRICE_CACHE=true \
-  -e SPOTPRICE_REDIS_URL="redis://redis:6379/0" \
+  -e SPOTPRICE_CACHE_TTL=60 \
   ghcr.io/thallaa/spotpriceadvisor:latest
 ```
 
@@ -173,8 +172,8 @@ For releases, publish tagged images (e.g., `:v1.0.0`) to your container registry
 - `SPOTPRICE_PORT` – Internal listen port (default 5000).
 - `SPOTPRICE_API_URL` – Override API endpoint.
 - `SPOTPRICE_USER_AGENT` – UA for upstream API.
-- `SPOTPRICE_CACHE` – `true`/`false` to enable Redis.
-- `SPOTPRICE_REDIS_URL` – Redis URL.
+- `SPOTPRICE_CACHE` – `true`/`false` to enable in-process cache.
+- `SPOTPRICE_CACHE_TTL` – Cache TTL seconds (default 60).
 - `SPOTPRICE_CACHE_TTL` – Cache TTL seconds (default 60).
 - `SPOTPRICE_CONFIG` – Path to TOML config (default `/etc/spotpriceadvisor/config.toml`).
 
