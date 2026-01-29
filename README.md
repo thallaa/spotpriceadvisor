@@ -13,14 +13,14 @@ Lightweight Flask microservice that tells you the cheapest upcoming time window 
 
 ```bash
 # Pull the published image (replace OWNER/PROJECT with your namespace once released)
-docker pull ghcr.io/OWNER/spotpriceadvisor:latest
+docker pull ghcr.io/thallaa/spotpriceadvisor:latest
 
 # Run on host port 5002, keep auth token, Redis cache disabled by default
 docker run -d --rm \
   -p 5002:5000 \
   -e SPOTPRICE_TOKEN="mysecret" \  # REQUIRED: change from default sentinel
   --name spotpriceadvisor \
-  ghcr.io/OWNER/spotpriceadvisor:latest
+  ghcr.io/thallaa/spotpriceadvisor:latest
 
 # Query (180-minute default window, Finnish)
 curl -H "Authorization: Bearer mysecret" http://localhost:5002/
@@ -38,7 +38,7 @@ docker run -d --rm --network spotnet \
   -e SPOTPRICE_TOKEN="mysecret" \
   -e SPOTPRICE_CACHE=true \
   -e SPOTPRICE_REDIS_URL="redis://redis:6379/0" \
-  ghcr.io/OWNER/spotpriceadvisor:latest
+  ghcr.io/thallaa/spotpriceadvisor:latest
 ```
 
 ### Configuration file
@@ -65,7 +65,7 @@ Mount it into the container:
 ```bash
 docker run -d --rm -p 5002:5000 \
   -v /etc/spotpriceadvisor/config.toml:/etc/spotpriceadvisor/config.toml:ro \
-  ghcr.io/OWNER/spotpriceadvisor:latest
+  ghcr.io/thallaa/spotpriceadvisor:latest
 ```
 
 ## Standalone (no Docker)
@@ -163,8 +163,8 @@ sudo certbot --apache -d spot.example.com
 
 ## Building your own image
 ```bash
-docker build -t ghcr.io/OWNER/spotpriceadvisor:latest .
-docker run -d --rm -p 5002:5000 ghcr.io/OWNER/spotpriceadvisor:latest
+docker build -t ghcr.io/thallaa/spotpriceadvisor:latest .
+docker run -d --rm -p 5002:5000 ghcr.io/thallaa/spotpriceadvisor:latest
 ```
 For releases, publish tagged images (e.g., `:v1.0.0`) to your container registry.
 
