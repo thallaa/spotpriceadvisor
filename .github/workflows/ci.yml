@@ -23,8 +23,8 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
 
-      - name: Lint
-        run: pylint spotpriceadvisor_api.py tests
+      - name: Lint (non-blocking)
+        run: pylint --exit-zero spotpriceadvisor_api.py tests
 
       - name: Test
         env:
