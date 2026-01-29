@@ -29,4 +29,5 @@ jobs:
       - name: Test
         env:
           SPOTPRICE_TOKEN: dummy
+          PYTHONPATH: ${{ github.workspace }}
         run: pytest
