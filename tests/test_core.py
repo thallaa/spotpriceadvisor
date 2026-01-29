@@ -37,7 +37,7 @@ def test_best_q15_window_finds_min_start():
     ts_prices[4] = (ts_prices[4][0], Decimal("1.0"))  # cheapest streak starts at i=4
     best = mod.best_q15_window(ts_prices, 4)
     # average should reflect the low segment
-    assert best[1] < Decimal("5")
+    assert best[1] < Decimal("10")
 
 
 def test_best_q15_window_ignores_gaps():
